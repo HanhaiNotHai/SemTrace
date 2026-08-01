@@ -1,0 +1,25 @@
+defaults:
+  - model: dinov3_vitb16
+  - protocol: genimage_sdv14
+  - _self_
+
+experiment: stage1_probe
+seed: 3407
+output_root: outputs
+probe:
+  candidate_layers: null
+  selected_layers_path: artifacts/probes/selected_layers.json
+  semantic_anchor_path: artifacts/probes/semantic_anchor.pt
+  output_dir: artifacts/probes
+  alpha: 0.5
+  beta: 0.5
+  epochs: 20
+  learning_rate: 0.001
+  batch_size: 128
+  nuisance_priority: [source, degradation, file_format, generator]
+training:
+  num_workers: 8
+  amp: bf16
+distributed:
+  backend: nccl
+  find_unused_parameters: false

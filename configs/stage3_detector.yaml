@@ -1,0 +1,54 @@
+defaults:
+  - model: dinov3_vitb16
+  - protocol: genimage_sdv14
+  - _self_
+
+experiment: stage3_detector
+seed: 3407
+output_root: outputs
+probe:
+  selected_layers_path: artifacts/probes/selected_layers.json
+  semantic_anchor_path: artifacts/probes/semantic_anchor.pt
+normal:
+  checkpoint: null
+normal_predictor:
+  hidden_dim: 256
+  num_heads: 8
+  num_layers: 2
+  neighborhood_size: 3
+  dropout: 0.1
+model_options:
+  baseline: semtrace
+  use_normal_predictor: true
+  num_trace_scales: 3
+  use_cross_attention: true
+  use_separation_loss: true
+  semantic_direct_classifier: false
+trace_adapter:
+  hidden_dim: 256
+cross_attention:
+  num_heads: 8
+  dropout: 0.1
+  max_semantic_gate: 0.5
+separation_loss:
+  weight: 0.05
+  margin: 0.01
+  eps: 1.0e-6
+training:
+  epochs: 200
+  optimizer: adam
+  learning_rate: 0.0002
+  betas: [0.9, 0.999]
+  weight_decay: 0.0002
+  scheduler: null
+  per_device_batch_size: 16
+  gradient_accumulation_steps: 2
+  target_global_batch_size: 128
+  num_workers: 8
+  amp: bf16
+  gradient_clip_norm: 1.0
+  resume: null
+distributed:
+  backend: nccl
+  find_unused_parameters: false
+  strict_protocol_world_size: 4

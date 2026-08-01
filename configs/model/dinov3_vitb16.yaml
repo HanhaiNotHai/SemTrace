@@ -1,0 +1,11 @@
+name: dinov3_vitb16
+model_id: facebook/dinov3-vitb16-pretrain-lvd1689m
+model_path: /home/wuyanzhang/.cache/modelscope/models/facebook--dinov3-vitb16-pretrain-lvd1689m/snapshots/master
+revision: master
+local_files_only: true
+patch_size: 16
+semantic_dim: 512
+trace_dim: 256
+semantic_projection:
+  mode: frozen_orthogonal
+  seed: 3407

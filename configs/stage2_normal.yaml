@@ -1,0 +1,35 @@
+defaults:
+  - model: dinov3_vitb16
+  - protocol: genimage_sdv14
+  - _self_
+
+experiment: stage2_normal
+seed: 3407
+output_root: outputs
+probe:
+  selected_layers_path: artifacts/probes/selected_layers.json
+  semantic_anchor_path: artifacts/probes/semantic_anchor.pt
+normal_predictor:
+  hidden_dim: 256
+  num_heads: 8
+  num_layers: 2
+  neighborhood_size: 3
+  dropout: 0.1
+loss:
+  lambda_smooth: 1.0
+  lambda_cos: 0.5
+training:
+  epochs: 50
+  optimizer: adam
+  learning_rate: 0.0002
+  betas: [0.9, 0.999]
+  weight_decay: 0.0002
+  per_device_batch_size: 16
+  gradient_accumulation_steps: 2
+  target_global_batch_size: 128
+  num_workers: 8
+  amp: bf16
+  gradient_clip_norm: 1.0
+distributed:
+  backend: nccl
+  find_unused_parameters: false

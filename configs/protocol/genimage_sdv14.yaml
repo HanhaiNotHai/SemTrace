@@ -1,0 +1,20 @@
+# @package _global_
+protocol:
+  name: genimage_sdv14
+  semantic_classes: imagenet
+  train_generators: [sdv1.4]
+data:
+  root: null
+  manifest_cache: artifacts/manifests
+  train_manifest: null
+  validation_manifest: null
+  test_manifests: {}
+preprocessing:
+  crop_size: 128
+  train_crop: random
+  eval_crop: center
+  small_image_policy: skip
+  allow_resize: false
+evaluation:
+  domains: [midjourney, sdv1.4, sdv1.5, adm, glide, wukong, vqdm, biggan]
+  threshold: 0.5

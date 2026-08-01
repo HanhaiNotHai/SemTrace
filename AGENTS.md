@@ -1,4 +1,4 @@
-# AGENTS.md
+# Repository Guidelines
 
 ## Purpose
 
@@ -620,3 +620,58 @@ A later user correction invalidates conflicting earlier assumptions.
 
 When a material conflict cannot be resolved safely, stop before modification and
 ask one focused question.
+
+---
+
+# SemTrace Research Rules
+
+## Research Objective and Labels
+
+SemTrace learns generalizable authenticity evidence while preserving a frozen
+DINOv3 semantic representation. The binary convention is fixed: `real = 0` and
+`fake = 1`. Every dataset adapter and metric test must preserve this convention.
+
+## Information-Flow Constraints
+
+Semantic features may condition normal prediction, act as the Cross-Attention
+query, enter the separation loss with stopped gradients, or support diagnostic
+probes. They must not enter the production classifier directly. The classifier
+accepts only `trace_evidence`; `semantic_direct_classifier` remains disabled in
+all main experiment configurations.
+
+Call residual features `candidate_trace_residual` or candidate trace residuals.
+They may contain generation traces, remaining semantics, post-processing
+interference, and normal-prediction error; never describe them as pure traces.
+
+## Frozen Components and Stage Order
+
+The DINOv3 backbone stays in evaluation mode with all parameters frozen in every
+stage. Stage 1 selects three layers and freezes the semantic projection. Stage 2
+trains three independent normal predictors on real images only. Stage 3 loads and
+freezes those predictors, then trains trace adapters, fusion, Cross-Attention,
+and the classifier. Later stages must consume earlier checkpoint and JSON
+artifacts instead of choosing defaults silently.
+
+## Protocol and Data Safety
+
+Follow the Pixel-level Mapping paper's data splits, 128x128 random training crop,
+128x128 center test crop, optimizer settings, and Acc/AP reporting protocol.
+There must be no implicit resize. Images smaller than the crop are skipped or
+reflect-padded only through an explicit configuration setting and audited count.
+All dataset, model, manifest, checkpoint, and output paths belong in YAML or CLI
+overrides; never hard-code them in Python source.
+
+## Required Checks
+
+Every behavioral change requires a focused test. Before completion run:
+
+```bash
+uv sync --extra dev
+uv run ruff check .
+uv run mypy src/semtrace
+uv run pytest
+```
+
+Use synthetic data for default smoke tests. Do not launch full 50/200-epoch
+training, download large datasets or weights, or run full-dataset evaluation
+without separate explicit approval.

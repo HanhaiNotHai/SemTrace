@@ -1,0 +1,6 @@
+defaults:
+  - protocol: genimage_sdv14
+  - _self_
+
+manifest:
+  output: ${data.manifest_cache}/${protocol.name}.jsonl
