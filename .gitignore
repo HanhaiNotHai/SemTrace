@@ -216,3 +216,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# SemTrace runtime artifacts and local datasets
+artifacts/
+outputs/
+*.ckpt
+*.pt
+*.pth
