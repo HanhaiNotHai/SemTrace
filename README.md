@@ -47,6 +47,12 @@ uv run torchrun --standalone --nproc_per_node=4 \
   data.validation_manifest=artifacts/manifests/genimage_sdv14.jsonl
 ```
 
+Rank 0 displays separate train/validation extraction progress bars with batch
+percentage, elapsed time, ETA, processed samples, and samples/second. Feature
+gathering, per-layer probe fitting, layer selection, and artifact writing also
+report stage completion and wall time. Redirect both terminal streams through
+`2>&1 | tee stage1_probe.log` to retain these progress messages.
+
 Stage 2 trains three independent predictors on real images only:
 
 ```bash

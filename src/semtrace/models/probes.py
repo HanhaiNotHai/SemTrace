@@ -12,6 +12,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, balanced_accuracy_score
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import LabelEncoder, StandardScaler
+from tqdm.auto import tqdm
 
 matplotlib.use("Agg")
 from matplotlib import pyplot as plt
@@ -63,12 +64,22 @@ def fit_layer_probes(
     *,
     seed: int = 3407,
     max_iter: int = 1000,
+    show_progress: bool = False,
 ) -> dict[int, LayerProbeMetrics]:
     """Fit independent frozen-feature linear probes for every candidate layer."""
     if set(train.features) != set(validation.features):
         raise ValueError("train and validation layers must match")
     metrics: dict[int, LayerProbeMetrics] = {}
-    for layer in sorted(train.features):
+    layers = sorted(train.features)
+    progress = tqdm(
+        layers,
+        total=len(layers),
+        desc="Fitting layer probes",
+        unit="layer",
+        dynamic_ncols=True,
+        disable=not show_progress,
+    )
+    for layer in progress:
         x_train = _as_feature_matrix(train.features[layer])
         x_validation = _as_feature_matrix(validation.features[layer])
         if x_train.shape[1] != x_validation.shape[1]:
@@ -108,6 +119,12 @@ def fit_layer_probes(
             authenticity_balanced_accuracy=authenticity_bacc,
             semantic_accuracy=semantic_accuracy,
             nuisance_accuracy=nuisance_accuracy,
+        )
+        progress.set_postfix(
+            layer=layer,
+            auth_ap=f"{authenticity_ap:.3f}",
+            semantic_acc=f"{semantic_accuracy:.3f}",
+            nuisance_acc=f"{nuisance_accuracy:.3f}",
         )
     return metrics
 
