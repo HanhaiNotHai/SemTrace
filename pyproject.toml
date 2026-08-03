@@ -21,6 +21,7 @@ dependencies = [
     "torchvision==0.26.0",
     "tqdm>=4.67,<5",
     "transformers==5.14.0",
+    "torch-tb-profiler>=0.4.3",
 ]
 
 [project.optional-dependencies]
