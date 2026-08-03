@@ -6,6 +6,7 @@ from typing import Any
 import torch
 import torch.distributed as dist
 from torch.utils.data import DataLoader
+from tqdm.auto import tqdm
 
 from semtrace.data.collate import ImageBatch
 from semtrace.metrics.binary import grouped_binary_metrics
@@ -46,11 +47,22 @@ def evaluate_loader(
     *,
     threshold: float = 0.5,
     amp_mode: str = "none",
+    description: str = "Evaluating",
+    show_progress: bool = False,
 ) -> tuple[dict[str, object], list[dict[str, Any]]]:
     model.eval()
     autocast_dtype = torch.bfloat16 if amp_mode == "bf16" else torch.float16
     local_predictions: list[dict[str, Any]] = []
-    for batch in loader:
+    sample_count = 0
+    progress = tqdm(
+        loader,
+        total=len(loader),
+        desc=description,
+        unit="batch",
+        dynamic_ncols=True,
+        disable=not show_progress,
+    )
+    for batch in progress:
         batch = batch.to(device)
         with torch.autocast(
             device_type=device.type,
@@ -82,6 +94,9 @@ def evaluate_loader(
                     ),
                 }
             )
+        if show_progress:
+            sample_count += int(batch.labels.shape[0])
+            progress.set_postfix(samples=sample_count)
     predictions = local_predictions
     if dist.is_initialized():
         gathered: list[list[dict[str, Any]] | None] = [None] * dist.get_world_size()
