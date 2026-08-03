@@ -80,6 +80,11 @@ uv run torchrun --standalone --nproc_per_node=4 \
   normal.checkpoint=/path/to/normal_best.pt
 ```
 
+Rank 0 displays training and validation progress with batch ETA and sample
+count. The training bar also shows running loss and learning rate; epoch
+summaries report validation Accuracy/AP and a resume-aware Stage 3 ETA. Append
+`2>&1 | tee stage3_detector.log` to retain the output.
+
 These configurations default to 50 and 200 epochs; do not launch them merely as
 smoke tests. The strict detector protocol is 4 GPUs × batch 16 × accumulation 2
 = 128. Six-GPU runs are logged as non-strict and linearly scale the learning

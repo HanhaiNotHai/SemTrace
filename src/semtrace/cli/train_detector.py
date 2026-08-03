@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import shutil
 import sys
+import time
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, cast
@@ -12,6 +13,7 @@ from omegaconf import OmegaConf
 from torch import nn
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils.tensorboard import SummaryWriter
+from tqdm.auto import tqdm
 
 from semtrace.config import parse_config_args
 from semtrace.data.manifest import manifest_sha256
@@ -171,14 +173,24 @@ def main(argv: Sequence[str] | None = None) -> int:
         writer = SummaryWriter(run_directory / "tensorboard")
 
     accumulation = int(config.training.gradient_accumulation_steps)
-    for epoch in range(start_epoch, int(config.training.epochs)):
+    epochs = int(config.training.epochs)
+    show_progress = context.is_main_process
+    stage_started = time.perf_counter()
+    for epoch in range(start_epoch, epochs):
+        epoch_started = time.perf_counter()
         if train_sampler is not None:
             train_sampler.set_epoch(epoch)
         training_model.train()
         optimizer.zero_grad(set_to_none=True)
         running_loss = 0.0
         batch_count = 0
-        for batch_index, batch in enumerate(train_loader):
+        sample_count = 0
+        train_progress = _progress_bar(
+            train_loader,
+            description=f"Stage 3 train {epoch + 1}/{epochs}",
+            show_progress=show_progress,
+        )
+        for batch_index, batch in enumerate(train_progress):
             batch = batch.to(context.device)
             with torch.autocast(
                 device_type=context.device.type,
@@ -199,8 +211,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                         eps=float(config.separation_loss.eps),
                     )
             scaler.scale(loss / accumulation).backward()
-            running_loss += float(loss.detach())
             batch_count += 1
+            if show_progress:
+                running_loss += float(loss.detach())
+                sample_count += int(batch.labels.shape[0])
+                _update_progress(
+                    train_progress,
+                    samples=sample_count,
+                    running_loss=running_loss / batch_count,
+                    learning_rate=float(optimizer.param_groups[0]["lr"]),
+                )
             should_step = (batch_index + 1) % accumulation == 0 or (
                 batch_index + 1 == len(train_loader)
             )
@@ -221,10 +241,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             context.device,
             threshold=float(config.evaluation.threshold),
             amp_mode=amp_mode,
+            description=f"Stage 3 validation {epoch + 1}/{epochs}",
+            show_progress=show_progress,
         )
+        validation_accuracy_value = validation_metrics["accuracy"]
         validation_ap_value = validation_metrics["average_precision"]
+        if not isinstance(validation_accuracy_value, (int, float)):
+            raise TypeError("accuracy metric must be numeric")
         if not isinstance(validation_ap_value, (int, float)):
             raise TypeError("average_precision metric must be numeric")
+        validation_accuracy = float(validation_accuracy_value)
         validation_ap = float(validation_ap_value)
         if context.is_main_process and run_directory is not None:
             metrics = {
@@ -275,6 +301,17 @@ def main(argv: Sequence[str] | None = None) -> int:
                     best_validation_metric=best_ap,
                     scaler=scaler,
                 )
+            _write_epoch_summary(
+                epoch=epoch + 1,
+                epochs=epochs,
+                completed_this_run=epoch - start_epoch + 1,
+                train_loss=running_loss / max(batch_count, 1),
+                validation_accuracy=validation_accuracy,
+                validation_ap=validation_ap,
+                epoch_seconds=time.perf_counter() - epoch_started,
+                elapsed_seconds=time.perf_counter() - stage_started,
+                show_progress=show_progress,
+            )
     if writer is not None:
         writer.close()
     return 0
@@ -284,6 +321,69 @@ def _write_jsonl(path: Path, rows: list[dict[str, object]]) -> None:
     with path.open("w", encoding="utf-8") as file:
         for row in rows:
             file.write(json.dumps(row, sort_keys=True) + "\n")
+
+
+def _progress_bar(
+    iterable: Any,
+    *,
+    description: str,
+    show_progress: bool,
+) -> Any:
+    return tqdm(
+        iterable,
+        total=len(iterable),
+        desc=description,
+        unit="batch",
+        dynamic_ncols=True,
+        disable=not show_progress,
+    )
+
+
+def _update_progress(
+    progress: Any,
+    *,
+    samples: int,
+    running_loss: float,
+    learning_rate: float,
+) -> None:
+    progress.set_postfix(
+        samples=samples,
+        loss=f"{running_loss:.4f}",
+        lr=f"{learning_rate:.2e}",
+    )
+
+
+def _write_epoch_summary(
+    *,
+    epoch: int,
+    epochs: int,
+    completed_this_run: int,
+    train_loss: float,
+    validation_accuracy: float,
+    validation_ap: float,
+    epoch_seconds: float,
+    elapsed_seconds: float,
+    show_progress: bool,
+) -> None:
+    if not show_progress:
+        return
+    remaining_seconds = elapsed_seconds / completed_this_run * (epochs - epoch)
+    tqdm.write(
+        f"[Stage 3] Epoch {epoch}/{epochs} complete: "
+        f"train_loss={train_loss:.4f}, accuracy={validation_accuracy:.4f}, "
+        f"AP={validation_ap:.4f}, epoch_time={_format_duration(epoch_seconds)}, "
+        f"stage_eta={_format_duration(remaining_seconds)}"
+    )
+
+
+def _format_duration(seconds: float) -> str:
+    if seconds < 60:
+        return f"{seconds:.1f}s"
+    minutes, remaining_seconds = divmod(seconds, 60)
+    if minutes < 60:
+        return f"{int(minutes)}m {remaining_seconds:.0f}s"
+    hours, remaining_minutes = divmod(minutes, 60)
+    return f"{int(hours)}h {int(remaining_minutes)}m"
 
 
 if __name__ == "__main__":
