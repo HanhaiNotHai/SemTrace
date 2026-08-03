@@ -64,6 +64,10 @@ uv run torchrun --standalone --nproc_per_node=4 \
   probe.selected_layers_path=artifacts/probes/selected_layers.json
 ```
 
+Rank 0 displays separate training and validation progress bars with batch ETA,
+sample count, running loss, and learning rate. Each epoch summary also estimates
+the remaining Stage 2 time; append `2>&1 | tee stage2_normal.log` to retain it.
+
 Stage 3 loads and freezes those predictors:
 
 ```bash
