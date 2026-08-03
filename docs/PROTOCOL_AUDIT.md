@@ -15,7 +15,9 @@ mapping module to the model.
 | Optimization | Paper, implementation details | Adam, lr 2e-4, betas 0.9/0.999, weight decay 2e-4, 200 detector epochs, batch 128 | Confirmed |
 | Metrics | Paper, implementation details | Accuracy at threshold 0.5 and AP from continuous fake scores | Confirmed |
 | Small images | Current implementation | Skip and count by default; optional explicit reflect padding | Assumption |
-| Directory mapping and sample counts | Dataset installation | Supplied through manifests/scanner configuration | Awaiting data |
+| Self-Synthesis directory mapping | Dataset installation | Nine generator directories, each with `0_real` and `1_fake` | Confirmed locally |
+| Self-Synthesis sampling | Current implementation | Use every accepted file; no random sampling or content deduplication | User-confirmed |
+| Directory sample counts | Generated manifest audit | 2,000 real and 2,000 fake files for each of nine Self-Synthesis generators; 36,000 accepted, zero skipped/invalid/duplicate | Verified locally |
 
 Primary sources:
 

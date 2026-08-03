@@ -14,6 +14,7 @@ from semtrace.data.collate import ImageBatch, collate_image_samples
 from semtrace.data.forensynths import ForenSynthsDataset
 from semtrace.data.genimage import GenImageDataset
 from semtrace.data.manifest import ManifestImageDataset
+from semtrace.data.self_synthesis import SelfSynthesisDataset
 from semtrace.data.transforms import ProtocolTransform
 from semtrace.models.baselines import BaselineMode, FrozenFeatureLinearBaseline
 from semtrace.models.normal_predictor import (
@@ -163,6 +164,8 @@ def build_dataset(
         adapter = ForenSynthsDataset
     elif str(config.protocol.name) == "genimage_sdv14":
         adapter = GenImageDataset
+    elif str(config.protocol.name) == "self_synthesis":
+        adapter = SelfSynthesisDataset
     else:
         adapter = ManifestImageDataset
     dataset = adapter(

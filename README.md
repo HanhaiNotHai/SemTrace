@@ -34,6 +34,19 @@ The result is `artifacts/manifests/genimage_sdv14.jsonl`. Point both
 `data.train_manifest` and `data.validation_manifest` to it; split filtering is
 driven by each JSONL record. Small images are counted and skipped by default.
 
+Build the combined nine-generator Self-Synthesis test manifest with:
+
+```bash
+uv run python -m semtrace.cli.build_manifest \
+  --config-name manifest \
+  protocol=self_synthesis \
+  data.root=/data/zhy/GANGen-Detection
+```
+
+This writes `artifacts/manifests/self_synthesis.jsonl` and its audit file. It
+keeps every accepted image under each generator's `0_real` and `1_fake`
+directories; no sampling or cross-generator content deduplication is applied.
+
 ## Three-stage training
 
 Stage 1 writes `probe_results.csv`, `selected_layers.json`,
@@ -112,3 +125,20 @@ Evaluation emits continuous-score AP, Accuracy at fake probability 0.5,
 per-generator metrics, mAcc/mAP, residual distributions, predictions, and
 Cross-Attention maps. See `docs/TRAINING.md` and
 `docs/REPRODUCIBILITY.md` for checkpoints and ablations.
+
+Evaluate a ForenSynths/ProGAN-trained SemTrace checkpoint on Self-Synthesis:
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1,2,3 \
+uv run torchrun --standalone --nproc_per_node=4 \
+  -m semtrace.cli.evaluate --config-name eval \
+  protocol=self_synthesis \
+  experiment=self_synthesis_eval \
+  checkpoint=/path/to/semtrace_best.pt \
+  normal.checkpoint=/path/to/normal_best.pt \
+  probe.selected_layers_path=artifacts/probes/selected_layers.json \
+  probe.semantic_anchor_path=artifacts/probes/semantic_anchor.pt
+```
+
+The detector, normal predictor, selected layers, and semantic anchor must come
+from the same ForenSynths/ProGAN training run.
