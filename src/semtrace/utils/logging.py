@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -9,7 +9,7 @@ from omegaconf import DictConfig, OmegaConf
 
 
 def create_run_directory(output_root: str | Path, experiment: str) -> Path:
-    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    timestamp = datetime.now().strftime("%Y%m%dT%H%M%SZ")
     run_directory = Path(output_root) / experiment / timestamp
     for child in ("checkpoints", "tensorboard", "predictions"):
         (run_directory / child).mkdir(parents=True, exist_ok=True)
