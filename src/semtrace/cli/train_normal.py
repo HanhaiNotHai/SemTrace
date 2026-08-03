@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shutil
 import sys
+import time
 from collections.abc import Sequence
 from typing import Any, cast
 
@@ -12,6 +13,7 @@ from torch import nn
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from tqdm.auto import tqdm
 
 from semtrace.config import parse_config_args
 from semtrace.data.collate import ImageBatch
@@ -136,14 +138,25 @@ def main(argv: Sequence[str] | None = None) -> int:
     best_loss = float("inf")
     global_step = 0
     accumulation = int(config.training.gradient_accumulation_steps)
-    for epoch in range(int(config.training.epochs)):
+    epochs = int(config.training.epochs)
+    show_progress = context.is_main_process
+    stage_started = time.perf_counter()
+    for epoch in range(epochs):
+        epoch_started = time.perf_counter()
         if train_sampler is not None:
             train_sampler.set_epoch(epoch)
         trainable.train()
         optimizer.zero_grad(set_to_none=True)
         total_loss = torch.zeros((), device=context.device)
         batch_count = 0
-        for batch_index, batch in enumerate(train_loader):
+        sample_count = 0
+        displayed_loss = 0.0
+        train_progress = _progress_bar(
+            train_loader,
+            description=f"Stage 2 train {epoch + 1}/{epochs}",
+            show_progress=show_progress,
+        )
+        for batch_index, batch in enumerate(train_progress):
             batch = batch.to(context.device)
             if not torch.all(batch.labels == 0):
                 raise ValueError("stage 2 loader yielded a fake sample")
@@ -172,6 +185,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             scaler.scale(loss / accumulation).backward()
             total_loss += loss.detach()
             batch_count += 1
+            if show_progress:
+                sample_count += int(batch.labels.shape[0])
+                displayed_loss += float(loss.detach())
+                _update_progress(
+                    train_progress,
+                    samples=sample_count,
+                    running_loss=displayed_loss / batch_count,
+                    learning_rate=float(optimizer.param_groups[0]["lr"]),
+                )
             should_step = (batch_index + 1) % accumulation == 0 or (
                 batch_index + 1 == len(train_loader)
             )
@@ -196,6 +218,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             context.device,
             amp_mode,
             autocast_dtype,
+            epoch=epoch + 1,
+            epochs=epochs,
+            show_progress=show_progress,
         )
         train_loss = _distributed_mean(total_loss / max(batch_count, 1))
         validation_loss = _distributed_mean(validation_loss)
@@ -243,6 +268,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                     best_validation_metric=best_loss,
                     scaler=scaler,
                 )
+            _write_epoch_summary(
+                epoch=epoch + 1,
+                epochs=epochs,
+                train_loss=float(train_loss),
+                validation_loss=float(validation_loss),
+                epoch_seconds=time.perf_counter() - epoch_started,
+                elapsed_seconds=time.perf_counter() - stage_started,
+                show_progress=show_progress,
+            )
     if writer is not None:
         writer.close()
     return 0
@@ -259,11 +293,22 @@ def _validation_loss(
     device: torch.device,
     amp_mode: str,
     autocast_dtype: torch.dtype,
+    *,
+    epoch: int,
+    epochs: int,
+    show_progress: bool,
 ) -> torch.Tensor:
     collection.eval()
     total = torch.zeros((), device=device)
     count = 0
-    for batch in loader:
+    sample_count = 0
+    displayed_loss = 0.0
+    validation_progress = _progress_bar(
+        loader,
+        description=f"Stage 2 validation {epoch}/{epochs}",
+        show_progress=show_progress,
+    )
+    for batch in validation_progress:
         batch = batch.to(device)
         with torch.autocast(
             device_type=device.type,
@@ -286,7 +331,78 @@ def _validation_loss(
             )
         total += loss
         count += 1
+        if show_progress:
+            sample_count += int(batch.labels.shape[0])
+            displayed_loss += float(loss)
+            _update_progress(
+                validation_progress,
+                samples=sample_count,
+                running_loss=displayed_loss / count,
+            )
     return total / max(count, 1)
+
+
+def _progress_bar(
+    iterable: Any,
+    *,
+    description: str,
+    show_progress: bool,
+) -> Any:
+    return tqdm(
+        iterable,
+        total=len(iterable),
+        desc=description,
+        unit="batch",
+        dynamic_ncols=True,
+        disable=not show_progress,
+    )
+
+
+def _update_progress(
+    progress: Any,
+    *,
+    samples: int,
+    running_loss: float,
+    learning_rate: float | None = None,
+) -> None:
+    values: dict[str, object] = {
+        "samples": samples,
+        "loss": f"{running_loss:.4f}",
+    }
+    if learning_rate is not None:
+        values["lr"] = f"{learning_rate:.2e}"
+    progress.set_postfix(**values)
+
+
+def _write_epoch_summary(
+    *,
+    epoch: int,
+    epochs: int,
+    train_loss: float,
+    validation_loss: float,
+    epoch_seconds: float,
+    elapsed_seconds: float,
+    show_progress: bool,
+) -> None:
+    if not show_progress:
+        return
+    remaining_seconds = elapsed_seconds / epoch * (epochs - epoch)
+    tqdm.write(
+        f"[Stage 2] Epoch {epoch}/{epochs} complete: "
+        f"train_loss={train_loss:.4f}, validation_loss={validation_loss:.4f}, "
+        f"epoch_time={_format_duration(epoch_seconds)}, "
+        f"stage_eta={_format_duration(remaining_seconds)}"
+    )
+
+
+def _format_duration(seconds: float) -> str:
+    if seconds < 60:
+        return f"{seconds:.1f}s"
+    minutes, remaining_seconds = divmod(seconds, 60)
+    if minutes < 60:
+        return f"{int(minutes)}m {remaining_seconds:.0f}s"
+    hours, remaining_minutes = divmod(minutes, 60)
+    return f"{int(hours)}h {int(remaining_minutes)}m"
 
 
 def _normal_loss(
