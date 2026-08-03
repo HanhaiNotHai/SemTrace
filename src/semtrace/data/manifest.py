@@ -151,12 +151,12 @@ def protocol_scan_rules(protocol_name: str) -> list[ScanRule]:
         generator_directories = {
             "ADM": "adm",
             "BigGAN": "biggan",
-            "GLIDE": "glide",
+            "glide": "glide",
             "Midjourney": "midjourney",
-            "Stable Diffusion V1.4": "sdv1.4",
-            "Stable Diffusion V1.5": "sdv1.5",
+            "stable_diffusion_v_1_4": "sdv1.4",
+            "stable_diffusion_v_1_5": "sdv1.5",
             "VQDM": "vqdm",
-            "Wukong": "wukong",
+            "wukong": "wukong",
         }
         rules = []
         for directory, generator in generator_directories.items():
