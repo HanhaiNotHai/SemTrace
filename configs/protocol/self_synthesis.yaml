@@ -1,0 +1,21 @@
+# @package _global_
+protocol:
+  name: self_synthesis
+  semantic_classes: null
+  train_generators: []
+data:
+  root: null
+  manifest_cache: artifacts/manifests
+  train_manifest: null
+  validation_manifest: null
+  test_manifests:
+    self_synthesis: artifacts/manifests/self_synthesis.jsonl
+preprocessing:
+  crop_size: 128
+  train_crop: random
+  eval_crop: center
+  small_image_policy: skip
+  allow_resize: false
+evaluation:
+  domains: [attgan, began, cramergan, infomaxgan, mmdgan, relgan, s3gan, sngan, stgan]
+  threshold: 0.5

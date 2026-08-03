@@ -18,6 +18,21 @@ The scanner expects the official CNNDetection layout:
 Training fake images are ProGAN. Self-Synthesis and UniversalFakeDetect data use
 their own manifests so generator/variant names remain explicit.
 
+## Self-Synthesis
+
+The scanner expects the installed GANGen-Detection layout:
+
+```text
+<root>/{AttGAN,BEGAN,CramerGAN,InfoMaxGAN,MMDGAN,RelGAN,S3GAN,SNGAN,STGAN}/
+  0_real/*
+  1_fake/*
+```
+
+All accepted files are assigned `split=test` and `source=self_synthesis`.
+Both real and fake records retain the enclosing generator name so per-generator
+Acc/AP includes that generator's paired real set. The scanner does not sample
+or content-deduplicate images.
+
 ## GenImage
 
 The scanner expects:
@@ -35,4 +50,3 @@ Transforms perform only random 128×128 training crop or center 128×128
 evaluation crop, followed by DINO normalization. They never resize. Images
 smaller than 128 are audited and skipped by default; `reflect` is an explicit
 non-main-protocol alternative.
-

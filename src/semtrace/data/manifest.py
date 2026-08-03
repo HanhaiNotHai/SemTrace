@@ -130,7 +130,7 @@ def scan_manifest(
 
 
 def protocol_scan_rules(protocol_name: str) -> list[ScanRule]:
-    """Return rules backed by the official ForenSynths and GenImage layouts."""
+    """Return explicit rules for each supported installed dataset layout."""
     if protocol_name == "forensynths_progan4":
         rules: list[ScanRule] = []
         for semantic_class, class_name in enumerate(("car", "cat", "chair", "horse")):
@@ -146,6 +146,31 @@ def protocol_scan_rules(protocol_name: str) -> list[ScanRule]:
                             semantic_class=semantic_class,
                         )
                     )
+        return rules
+    if protocol_name == "self_synthesis":
+        generator_directories = {
+            "AttGAN": "attgan",
+            "BEGAN": "began",
+            "CramerGAN": "cramergan",
+            "InfoMaxGAN": "infomaxgan",
+            "MMDGAN": "mmdgan",
+            "RelGAN": "relgan",
+            "S3GAN": "s3gan",
+            "SNGAN": "sngan",
+            "STGAN": "stgan",
+        }
+        rules = []
+        for directory, generator in generator_directories.items():
+            for label, label_directory in ((0, "0_real"), (1, "1_fake")):
+                rules.append(
+                    ScanRule(
+                        glob=f"{directory}/{label_directory}/**/*",
+                        label=label,
+                        generator=generator,
+                        source="self_synthesis",
+                        split="test",
+                    )
+                )
         return rules
     if protocol_name == "genimage_sdv14":
         generator_directories = {
