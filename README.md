@@ -121,9 +121,11 @@ uv run ruff check .
 uv run mypy src/semtrace
 ```
 
-Evaluation emits continuous-score AP, Accuracy at fake probability 0.5,
-per-generator metrics, mAcc/mAP, residual distributions, predictions, and
-Cross-Attention maps. See `docs/TRAINING.md` and
+Evaluation selects one global threshold that maximizes Accuracy over the full
+evaluation set and reports it with continuous-score AP, per-generator metrics,
+mAcc/mAP, residual distributions, predictions, and Cross-Attention maps. This
+is an evaluation-set oracle threshold, so it should not be interpreted as an
+unbiased deployment threshold. See `docs/TRAINING.md` and
 `docs/REPRODUCIBILITY.md` for checkpoints and ablations.
 Rank 0 shows one tqdm progress bar per configured manifest with its domain,
 position, batch ETA, and processed sample count. Append `2>&1 | tee eval.log`

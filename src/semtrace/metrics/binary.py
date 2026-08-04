@@ -26,6 +26,49 @@ class GroupedBinaryMetrics:
     mean_average_precision: float
 
 
+def optimal_accuracy_threshold(
+    labels: list[int] | np.ndarray,
+    fake_scores: list[float] | np.ndarray,
+    *,
+    reference_threshold: float = 0.5,
+) -> float:
+    """Return the global accuracy-maximizing threshold for ``score >= threshold``."""
+    targets = np.asarray(labels, dtype=np.int64)
+    scores = np.asarray(fake_scores, dtype=np.float64)
+    if targets.ndim != 1 or scores.ndim != 1 or targets.shape != scores.shape:
+        raise ValueError("labels and fake_scores must be equally sized one-dimensional arrays")
+    if targets.size == 0:
+        raise ValueError("threshold selection requires at least one sample")
+    if not np.isin(targets, [0, 1]).all():
+        raise ValueError("labels must follow real=0, fake=1")
+    if not np.isfinite(scores).all() or not np.isfinite(reference_threshold):
+        raise ValueError("fake_scores and reference_threshold must be finite")
+
+    unique_scores, inverse = np.unique(scores, return_inverse=True)
+    real_counts = np.bincount(inverse[targets == 0], minlength=unique_scores.size)
+    fake_counts = np.bincount(inverse[targets == 1], minlength=unique_scores.size)
+    real_below = np.concatenate(([0], np.cumsum(real_counts)[:-1]))
+    fake_at_or_above = fake_counts.sum() - np.concatenate(
+        ([0], np.cumsum(fake_counts)[:-1])
+    )
+    candidates = np.concatenate(
+        (
+            unique_scores,
+            [np.nextafter(unique_scores[-1], np.inf), reference_threshold],
+        )
+    )
+    correct = np.concatenate(
+        (
+            real_below + fake_at_or_above,
+            [real_counts.sum(), np.sum((scores >= reference_threshold) == targets)],
+        )
+    )
+    best = candidates[correct == correct.max()]
+    distances = np.abs(best - reference_threshold)
+    closest = best[np.isclose(distances, distances.min(), rtol=0.0, atol=1.0e-12)]
+    return float(closest.max())
+
+
 def binary_metrics(
     labels: list[int] | np.ndarray,
     fake_scores: list[float] | np.ndarray,
