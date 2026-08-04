@@ -88,10 +88,10 @@ def test_forensynths_official_rules_map_real_and_fake(tmp_path: Path) -> None:
 
 def test_genimage_official_rules_use_sdv14_for_training(tmp_path: Path) -> None:
     Image.new("RGB", (128, 128)).save(
-        _make_parent(tmp_path / "Stable Diffusion V1.4/train/ai/n01440764/a.png")
+        _make_parent(tmp_path / "stable_diffusion_v_1_4/train/ai/n01440764/a.png")
     )
     Image.new("RGB", (128, 128)).save(
-        _make_parent(tmp_path / "Stable Diffusion V1.4/train/nature/n01440764/b.png")
+        _make_parent(tmp_path / "stable_diffusion_v_1_4/train/nature/n01440764/b.png")
     )
 
     records, _ = scan_manifest(
