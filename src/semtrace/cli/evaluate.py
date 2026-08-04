@@ -11,7 +11,7 @@ from semtrace.config import parse_config_args
 from semtrace.engine.checkpoint import load_training_checkpoint
 from semtrace.engine.distributed import initialize_distributed, select_amp_mode
 from semtrace.engine.evaluator import evaluate_loader
-from semtrace.metrics.binary import grouped_binary_metrics
+from semtrace.metrics.binary import grouped_binary_metrics, optimal_accuracy_threshold
 from semtrace.runtime import (
     build_backbone,
     build_dataset,
@@ -118,13 +118,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         residual_distributions[str(domain)] = metrics["residual_distributions"]
         all_predictions.extend(predictions)
 
+    labels = [int(row["label"]) for row in all_predictions]
+    fake_probabilities = [float(row["fake_probability"]) for row in all_predictions]
+    threshold = optimal_accuracy_threshold(
+        labels,
+        fake_probabilities,
+        reference_threshold=float(config.evaluation.threshold),
+    )
     grouped = grouped_binary_metrics(
-        [int(row["label"]) for row in all_predictions],
-        [float(row["fake_probability"]) for row in all_predictions],
+        labels,
+        fake_probabilities,
         [str(row["generator"]) for row in all_predictions],
-        threshold=float(config.evaluation.threshold),
+        threshold=threshold,
     )
     results = {
+        "threshold": threshold,
         "accuracy": grouped.overall.accuracy,
         "average_precision": grouped.overall.average_precision,
         "auroc": grouped.overall.auroc,
