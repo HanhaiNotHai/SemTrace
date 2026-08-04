@@ -78,7 +78,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         configured_manifests = {"validation": config.data.validation_manifest}
     all_predictions: list[dict[str, Any]] = []
     residual_distributions: dict[str, object] = {}
-    for domain, manifest in configured_manifests.items():
+    manifest_items = list(configured_manifests.items())
+    for position, (domain, manifest) in enumerate(manifest_items, start=1):
         if not isinstance(domain, str):
             raise TypeError("test manifest names must be strings")
         if manifest is None:
@@ -99,12 +100,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             world_size=context.world_size,
             rank=context.rank,
         )
+        description, show_progress = _evaluation_progress(
+            domain,
+            position=position,
+            total=len(manifest_items),
+            is_main_process=context.is_main_process,
+        )
         metrics, predictions = evaluate_loader(
             detector,
             loader,
             context.device,
             threshold=float(config.evaluation.threshold),
             amp_mode=amp_mode,
+            description=description,
+            show_progress=show_progress,
         )
         residual_distributions[str(domain)] = metrics["residual_distributions"]
         all_predictions.extend(predictions)
@@ -157,6 +166,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                 file.write(json.dumps(prediction, sort_keys=True) + "\n")
         print(json.dumps(results, indent=2, sort_keys=True))
     return 0
+
+
+def _evaluation_progress(
+    domain: str,
+    *,
+    position: int,
+    total: int,
+    is_main_process: bool,
+) -> tuple[str, bool]:
+    return f"Evaluating {domain} ({position}/{total})", is_main_process
 
 
 if __name__ == "__main__":
