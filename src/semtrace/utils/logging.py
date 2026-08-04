@@ -25,5 +25,5 @@ def write_resolved_config(config: DictConfig, run_directory: Path) -> None:
 
 def append_metrics(run_directory: Path, metrics: dict[str, Any]) -> None:
     with (run_directory / "metrics.jsonl").open("a", encoding="utf-8") as file:
-        file.write(json.dumps(metrics, sort_keys=True) + "\n")
+        file.write(json.dumps(metrics, indent=2, sort_keys=True) + "\n")
 
