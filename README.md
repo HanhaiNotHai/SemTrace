@@ -125,6 +125,9 @@ Evaluation emits continuous-score AP, Accuracy at fake probability 0.5,
 per-generator metrics, mAcc/mAP, residual distributions, predictions, and
 Cross-Attention maps. See `docs/TRAINING.md` and
 `docs/REPRODUCIBILITY.md` for checkpoints and ablations.
+Rank 0 shows one tqdm progress bar per configured manifest with its domain,
+position, batch ETA, and processed sample count. Append `2>&1 | tee eval.log`
+to the evaluation command to retain the progress output.
 
 Evaluate a ForenSynths/ProGAN-trained SemTrace checkpoint on Self-Synthesis:
 
