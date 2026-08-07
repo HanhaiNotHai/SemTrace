@@ -1,0 +1,4 @@
+# @package _global_
+defaults: [mechanism_base, _self_]
+analysis:
+  task: trace_coverage

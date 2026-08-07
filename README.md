@@ -147,3 +147,29 @@ uv run torchrun --standalone --nproc_per_node=4 \
 
 The detector, normal predictor, selected layers, and semantic anchor must come
 from the same ForenSynths/ProGAN training run.
+
+## Mechanism analysis
+
+Extract a bounded, restartable feature cache and generate the complete mechanism report:
+
+```bash
+uv run torchrun --standalone --nproc_per_node=4 \
+  -m semtrace.cli.run_mechanism_suite \
+  checkpoint=/path/to/semtrace_best.pt \
+  normal.checkpoint=/path/to/normal_best.pt \
+  probe.selected_layers_path=/path/to/selected_layers.json \
+  probe.semantic_anchor_path=/path/to/semantic_anchor.pt \
+  protocol=genimage_sdv14 \
+  'data.test_manifests={genimage:/path/to/test.jsonl}' \
+  analysis.max_samples_per_group=2000
+```
+
+The suite exports normal-prediction and candidate-residual statistics, scale usage, finite-sample
+MI/HSIC/CKA results, train/test linear probes, masking and semantic counterfactual diagnostics,
+Cross-Attention statistics, post-hoc continuous trace-prototype coverage, heatmaps, CSV tables,
+`mechanism_summary.json`, and `mechanism_report.md`. Individual commands and quick-mode
+overrides are documented in [docs/MECHANISM_ANALYSIS.md](docs/MECHANISM_ANALYSIS.md).
+
+Candidate residuals and heatmaps are diagnostic internal representations, not pure generation
+traces or causal explanations. Cached offline analyses reject mismatched checkpoint,
+configuration, or manifest hashes.

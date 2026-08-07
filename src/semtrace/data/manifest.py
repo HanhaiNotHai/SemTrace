@@ -25,6 +25,9 @@ class ManifestRecord:
     split: str
     degradation: str | None = None
     file_format: str | None = None
+    content_env: str | None = None
+    real_source: str | None = None
+    source_dataset: str | None = None
 
     def __post_init__(self) -> None:
         if self.label not in (0, 1):
@@ -117,6 +120,7 @@ def scan_manifest(
                     split=rule.split,
                     degradation=rule.degradation,
                     file_format=resolved.suffix.lower().lstrip("."),
+                    source_dataset=rule.source,
                 )
             )
     audit = ScanAudit(
@@ -268,6 +272,10 @@ class ManifestImageDataset(Dataset[ImageSample]):
             source=record.source,
             degradation=record.degradation,
             path=str(path),
+            content_env=record.content_env,
+            real_source=record.real_source,
+            source_dataset=record.source_dataset or record.source,
+            split=record.split,
         )
 
     def __iter__(self) -> Iterator[ImageSample]:
