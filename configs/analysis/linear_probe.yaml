@@ -1,0 +1,6 @@
+# @package _global_
+defaults: [mechanism_base, _self_]
+analysis:
+  task: linear_probe
+linear_probe:
+  pca_dimensions: 32

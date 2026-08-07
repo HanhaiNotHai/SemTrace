@@ -14,3 +14,7 @@ class ImageSample:
     source: str | None
     degradation: str | None
     path: str
+    content_env: str | None = None
+    real_source: str | None = None
+    source_dataset: str | None = None
+    split: str | None = None

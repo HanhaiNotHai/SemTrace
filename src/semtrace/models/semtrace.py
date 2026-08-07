@@ -24,6 +24,22 @@ class SemTraceOutput:
     attention_map: torch.Tensor | None
 
 
+@dataclass(frozen=True, slots=True)
+class SemTraceAnalysisOutput:
+    semantic_anchor: torch.Tensor
+    selected_layers: tuple[int, ...]
+    raw_patch_features: dict[int, torch.Tensor]
+    predicted_normal_features: dict[int, torch.Tensor]
+    prediction_errors: dict[int, torch.Tensor]
+    candidate_trace_residuals: dict[int, torch.Tensor]
+    adapted_trace_tokens: dict[int, torch.Tensor]
+    fused_trace_tokens: torch.Tensor
+    attention_weights: torch.Tensor | None
+    trace_evidence: torch.Tensor
+    logits: torch.Tensor
+    patch_grid_size: tuple[int, int]
+
+
 class SemTrace(nn.Module):
     """Semantic-conditioned detector whose classifier receives only trace evidence."""
 
@@ -162,3 +178,75 @@ class SemTrace(nn.Module):
             residual_statistics=statistics,
             attention_map=attention_map,
         )
+
+    @torch.inference_mode()
+    def analyze(self, images: torch.Tensor) -> SemTraceAnalysisOutput:
+        """Run the unchanged detector path while retaining analysis intermediates."""
+        was_training = self.training
+        self.eval()
+        try:
+            backbone_output = self.backbone(images)
+            semantic = self.semantic_anchor(
+                backbone_output.semantic_cls,
+                backbone_output.final_patch_tokens,
+            )
+            predictions: dict[int, torch.Tensor] = {}
+            errors: dict[int, torch.Tensor] = {}
+            residuals: dict[int, torch.Tensor] = {}
+            adapted: dict[int, torch.Tensor] = {}
+            grids: list[tuple[int, int]] = []
+            for layer in self.selected_layers:
+                observed = backbone_output.intermediate_patch_tokens[layer]
+                if self.use_normal_predictor:
+                    predictor = self.normal_predictors[str(layer)]
+                    if not isinstance(predictor, NormalFeaturePredictor):
+                        raise TypeError("normal predictor has an unexpected module type")
+                    predicted = predictor(
+                        semantic,
+                        observed,
+                        backbone_output.patch_grid_size,
+                    )
+                else:
+                    predicted = torch.zeros_like(observed)
+                error = observed - predicted
+                residual = candidate_trace_residual(observed, predicted)
+                predictions[layer] = predicted
+                errors[layer] = error
+                residuals[layer] = residual
+                adapted[layer] = self.trace_adapters[str(layer)](
+                    residual,
+                    backbone_output.patch_grid_size,
+                )
+                grids.append(backbone_output.patch_grid_size)
+
+            trace_tokens, _ = self.trace_fusion(
+                [adapted[layer] for layer in self.selected_layers],
+                grids,
+            )
+            if self.use_cross_attention:
+                if self.cross_attention is None:
+                    raise RuntimeError("cross-attention was enabled but not constructed")
+                trace_evidence, attention_weights = self.cross_attention(
+                    semantic,
+                    trace_tokens,
+                )
+            else:
+                trace_evidence = trace_tokens.mean(dim=1)
+                attention_weights = None
+            logits = self.classifier(trace_evidence)
+            return SemTraceAnalysisOutput(
+                semantic_anchor=semantic,
+                selected_layers=self.selected_layers,
+                raw_patch_features=backbone_output.intermediate_patch_tokens,
+                predicted_normal_features=predictions,
+                prediction_errors=errors,
+                candidate_trace_residuals=residuals,
+                adapted_trace_tokens=adapted,
+                fused_trace_tokens=trace_tokens,
+                attention_weights=attention_weights,
+                trace_evidence=trace_evidence,
+                logits=logits,
+                patch_grid_size=backbone_output.patch_grid_size,
+            )
+        finally:
+            self.train(was_training)
