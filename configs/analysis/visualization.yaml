@@ -5,3 +5,4 @@ analysis:
 visualization:
   num_samples: 50
   alpha: 0.45
+  resize_size: 128
