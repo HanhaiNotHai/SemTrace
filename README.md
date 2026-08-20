@@ -173,3 +173,15 @@ overrides are documented in [docs/MECHANISM_ANALYSIS.md](docs/MECHANISM_ANALYSIS
 Candidate residuals and heatmaps are diagnostic internal representations, not pure generation
 traces or causal explanations. Cached offline analyses reject mismatched checkpoint,
 configuration, or manifest hashes.
+
+Generate the proposal-defense core-mechanism handoff package from an existing mechanism run:
+
+```bash
+MPLCONFIGDIR=/tmp/semtrace-mpl uv run python \
+  -m semtrace.cli.build_proposal_mechanism_package
+```
+
+This produces reproducible residual, scale-masking, and semantic-versus-trace intervention
+figures plus their CSV/JSON sources, reports, provenance, and ZIP under
+`outputs/proposal_mechanism_package/<timestamp>/`. See
+[docs/MECHANISM_ANALYSIS.md](docs/MECHANISM_ANALYSIS.md) for overrides and interpretation limits.

@@ -1,0 +1,16 @@
+# @package _global_
+mechanism_root: outputs/mechanism/mechanism_suite/semtrace_best/genimage_sdv14/20260806T075824Z
+eval_root: outputs/genimage_all_generators_eval/20260804T105924Z
+checkpoint: outputs/stage3_detector/20260803T144441Z/checkpoints/semtrace_best.pt
+selected_layers_path: outputs/stage3_detector/20260803T144441Z/selected_layers.json
+dataset: genimage_sdv14
+protocol: genimage_sdv14
+output_root: outputs/proposal_mechanism_package
+output_dir: null
+random_seeds: [0]
+bootstrap_iterations: 1000
+confidence_level: 0.95
+dpi: 300
+image_formats: [png, pdf]
+head_batch_size: 512
+device: auto

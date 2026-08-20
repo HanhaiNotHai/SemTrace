@@ -113,3 +113,24 @@ split to select probe preprocessing, prototype count, mask ratio, or a deploymen
 Low probe accuracy does not prove absence of information; zero estimated MI does not prove
 independence; attention does not establish causality. Heatmaps only show internal candidate
 residual intensity or attention and are not automatically human-interpretable artifacts.
+
+## Proposal mechanism package
+
+Build the proposal-defense handoff package from the existing mechanism cache and formal
+GenImage evaluation without rerunning DINOv3 or training:
+
+```bash
+MPLCONFIGDIR=/tmp/semtrace-mpl uv run python \
+  -m semtrace.cli.build_proposal_mechanism_package \
+  mechanism_root=outputs/mechanism/mechanism_suite/semtrace_best/genimage_sdv14/20260806T075824Z \
+  eval_root=outputs/genimage_all_generators_eval/20260804T105924Z \
+  checkpoint=outputs/stage3_detector/20260803T144441Z/checkpoints/semtrace_best.pt
+```
+
+The command exports three traceable results: pre-LayerNorm real/fake prediction-error
+distributions, per-generator after-adapter leave-one-scale-out AP changes, and globally matched
+semantic-versus-trace swaps recomputed with only the trained Cross-Attention/classification
+head. It writes CSV/JSON, 300-DPI PNG/PDF figures, a triptych, Chinese descriptions, a ChatGPT
+handoff, provenance hashes, a file manifest, and a validated ZIP. Missing semantic labels are
+never synthesized; the semantic intervention is described only by its actual generator and
+authenticity matching rule.
