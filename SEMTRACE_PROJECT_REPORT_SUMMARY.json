@@ -1,0 +1,182 @@
+{
+  "report": {
+    "path": "docs/SEMTRACE_PROJECT_REPORT_FOR_PROPOSAL.md",
+    "audit_date": "2026-08-11",
+    "repository_commit": "12cafd9f7dfce7e4f6eff29525f705e77cd8ad58"
+  },
+  "method": {
+    "name": "SemTrace",
+    "full_name": "Semantic-Conditioned Multi-Scale Trace Residual Learning for Generalizable AI-Generated Image Detection",
+    "backbone": {
+      "model_id": "facebook/dinov3-vitb16-pretrain-lvd1689m",
+      "revision": "master",
+      "architecture": "DINOv3 ViT-B/16",
+      "hidden_dim": 768,
+      "num_blocks": 12,
+      "patch_size": 16,
+      "register_tokens": 4,
+      "frozen": true
+    },
+    "input_size": [128, 128],
+    "patch_grid": [8, 8],
+    "semantic_dim": 512,
+    "trace_dim": 256,
+    "classifier_input": "trace_evidence_only",
+    "label_convention": {"real": 0, "fake": 1},
+    "candidate_residual_notice": "Candidate trace residuals are mixed residuals, not pure generation traces."
+  },
+  "selected_layers": [2, 6, 8],
+  "probe_selection": {
+    "candidate_layers": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    "score_formula": "z(AP_auth) - 0.5*z(Acc_sem) - 0.5*z(Acc_nuis)",
+    "semantic_label_coverage": 0.0,
+    "nuisance_label": "file_format",
+    "generator_probe_enabled": false,
+    "selected_metrics": {
+      "2": {"authenticity_ap": 0.9984695, "score": 0.227416},
+      "6": {"authenticity_ap": 0.9995125, "score": 0.436479},
+      "8": {"authenticity_ap": 0.9983012, "score": 0.388859}
+    }
+  },
+  "training_stages": {
+    "stage1": {
+      "name_zh": "多层特征探针选择",
+      "world_size": 4,
+      "per_device_batch_size": 256,
+      "global_batch_size": 1024,
+      "artifact": "artifacts/probes/selected_layers.json"
+    },
+    "stage2": {
+      "name_zh": "语义条件正常特征学习",
+      "epochs": 50,
+      "world_size": 4,
+      "per_device_batch_size": 32,
+      "gradient_accumulation_steps": 1,
+      "global_batch_size": 128,
+      "optimizer": "Adam",
+      "learning_rate": 0.0002,
+      "best_epoch": 47,
+      "best_validation_loss": 0.3729240298,
+      "checkpoint": "outputs/stage2_normal/20260803T113850Z/checkpoints/normal_best.pt"
+    },
+    "stage3": {
+      "name_zh": "多尺度痕迹判别学习",
+      "epochs": 200,
+      "world_size": 4,
+      "per_device_batch_size": 32,
+      "gradient_accumulation_steps": 1,
+      "global_batch_size": 128,
+      "optimizer": "Adam",
+      "learning_rate": 0.0002,
+      "best_epoch": 180,
+      "best_validation_ap": 0.9999802243,
+      "checkpoint": "outputs/stage3_detector/20260803T144441Z/checkpoints/semtrace_best.pt",
+      "checkpoint_sha256": "ae38fe62b9e7a140dffdd212182fa290a993d8a603bf5e7ce1354eddeed7129a"
+    }
+  },
+  "losses": {
+    "normal": {"smooth_l1_weight": 1.0, "cosine_weight": 0.5, "aggregation": "sum_over_three_scales"},
+    "detection": "BCEWithLogitsLoss",
+    "separation": {"weight": 0.05, "margin": 0.01, "eps": 1e-6, "global_ddp_statistics": true},
+    "stage2": "L_normal",
+    "stage3": "L_det + 0.05 * L_sep"
+  },
+  "main_experiment": {
+    "source_directory": "outputs/genimage_all_generators_eval/20260804T105924Z",
+    "sample_count": 99758,
+    "threshold": 0.0002611903182696551,
+    "threshold_policy": "one global threshold maximizing accuracy on the complete evaluation set; ties prefer closest to 0.5 then larger",
+    "accuracy": 0.9221014855951403,
+    "average_precision": 0.9787350886781933,
+    "auroc": 0.97572926303308,
+    "mAcc": 0.9200437489931209,
+    "mAP": 0.9754468012675196,
+    "real_accuracy": 0.9456971743237268,
+    "fake_accuracy": 0.89862,
+    "false_positive_rate": 0.05430282567627316,
+    "false_positive_rate_at_95_tpr": 0.15549258410707825,
+    "per_generator": {
+      "adm": {"accuracy": 0.7779911497035986, "average_precision": 0.9020881587747973},
+      "biggan": {"accuracy": 0.8692925238334169, "average_precision": 0.955446029929095},
+      "glide": {"accuracy": 0.9432890670675687, "average_precision": 0.9865847230478502},
+      "midjourney": {"accuracy": 0.9396342990732237, "average_precision": 0.9843852183160693},
+      "sdv1.4": {"accuracy": 0.9730226342604192, "average_precision": 0.9999803357318304},
+      "sdv1.5": {"accuracy": 0.9714983713355049, "average_precision": 0.999857693910548},
+      "vqdm": {"accuracy": 0.9119465329991646, "average_precision": 0.9758020211937417},
+      "wukong": {"accuracy": 0.9736754136720709, "average_precision": 0.9994302292362249}
+    },
+    "interpretation_limit": "The eight-generator validation manifest participated in layer selection and checkpoint selection; the reported threshold was calibrated on the evaluation set."
+  },
+  "mechanism_evidence": {
+    "source_directory": "outputs/mechanism/mechanism_suite/semtrace_best/genimage_sdv14/20260806T075824Z",
+    "sample_count": 32000,
+    "normal_prediction_l2": {
+      "layer_2": {"real_mean": 74.196673, "fake_mean": 76.385468, "cohens_d": 0.337476},
+      "layer_6": {"real_mean": 50.487369, "fake_mean": 51.069686, "cohens_d": 0.174469},
+      "layer_8": {"real_mean": 31.413679, "fake_mean": 32.213309, "cohens_d": 0.432360}
+    },
+    "authenticity_linear_probe_ap": {
+      "semantic_anchor": 0.8018515905481088,
+      "raw_2": 0.8915828267045764,
+      "raw_6": 0.8181608482698076,
+      "raw_8": 0.7937099817581759,
+      "residual_2": 0.8822312648060663,
+      "residual_6": 0.8117087798876068,
+      "residual_8": 0.784455282262123,
+      "fused_trace_mean": 0.9684566487342391,
+      "trace_evidence": 0.9530282863038634
+    },
+    "scale_usage": {
+      "layer_2": 0.16627854488021693,
+      "layer_6": 0.7014257329404354,
+      "layer_8": 0.13229572200437542,
+      "effective_scale_count": 1.8613335746638477,
+      "scale_entropy": 0.8065590063557029
+    },
+    "scale_masking_ap_drop": {"layer_2": 0.0133885653827056, "layer_6": 0.059106226809064, "layer_8": 0.0268627759757926},
+    "semantic_query_zero": {"accuracy_drop": 0.0085625, "ap_drop": 0.003258, "prediction_flip_rate": 0.051375},
+    "attention_head_1": {"entropy": 4.093260142870247, "effective_patches": 57.275088952839376, "mask_ap_drop": 0.0044444071918317, "prediction_flip_rate": 0.0623125},
+    "prototype_64_unknown_ood_ratio_range": [0.04253515625, 0.05858203125],
+    "semantic_probe_status": "skipped: semantic_class and content_env labels are absent",
+    "generator_probe_status": "skipped: fewer than two generator classes in the probe training split",
+    "interpretation_limits": [
+      "MI estimates are finite-sample relative diagnostics.",
+      "Masking and counterfactual experiments are inference-time diagnostics, not causal proof.",
+      "Post-hoc continuous prototypes are not internal discrete forensic primitives.",
+      "The representation chain is not monotonically improving at every individual stage."
+    ]
+  },
+  "single_sample_visualization": {
+    "sample": "/data/zhy/GenImage/stable_diffusion_v_1_4/train/ai/658_sdv4_00138.png",
+    "label": 1,
+    "generator": "sdv1.4",
+    "output_directory": "outputs/mechanism/project_report_single_sample/658_sdv4_00138",
+    "runtime_device": "cpu",
+    "original_size": [512, 512],
+    "model_input_size": [128, 128],
+    "preprocessing": "full_image_resize_lanczos_without_crop",
+    "logit": -8.428906440734863,
+    "fake_probability": 0.0002184125332860276,
+    "predicted_label_at_0_5": 0,
+    "predicted_label_at_main_global_threshold": 0,
+    "previous_center_crop_probability_displayed": 1.0,
+    "diagnosis": "The fake sample flips from a high fake score under the previous center crop to a real prediction after full-image resize, indicating field-of-view and scale sensitivity."
+  },
+  "figures": [
+    {"path": "artifacts/probes/layer_score_plot.png", "role": "layer selection"},
+    {"path": "outputs/mechanism/mechanism_suite/semtrace_best/genimage_sdv14/20260806T075824Z/plots/normal_prediction_real_fake.png", "role": "normal prediction comparison"},
+    {"path": "outputs/mechanism/mechanism_suite/semtrace_best/genimage_sdv14/20260806T075824Z/plots/residual_scale_correlation.png", "role": "residual scale correlation"},
+    {"path": "outputs/mechanism/project_report_single_sample/658_sdv4_00138/heatmaps/sample_00000_residual_L2.png", "role": "full-image-resize shallow residual failure analysis"},
+    {"path": "outputs/mechanism/project_report_single_sample/658_sdv4_00138/heatmaps/sample_00000_residual_L6.png", "role": "full-image-resize middle residual failure analysis"},
+    {"path": "outputs/mechanism/project_report_single_sample/658_sdv4_00138/heatmaps/sample_00000_residual_L8.png", "role": "full-image-resize deep residual failure analysis"},
+    {"path": "outputs/mechanism/project_report_single_sample/658_sdv4_00138/heatmaps/sample_00000_fused_trace.png", "role": "full-image-resize fused trace failure analysis"},
+    {"path": "outputs/mechanism/project_report_single_sample/658_sdv4_00138/heatmaps/sample_00000_attention_head1.png", "role": "full-image-resize non-uniform attention head"},
+    {"path": "outputs/mechanism/project_report_single_sample/658_sdv4_00138/heatmaps/sample_00000_attention_times_trace.png", "role": "full-image-resize attention-times-trace failure analysis"}
+  ],
+  "proposal_mapping": {
+    "main_research_content": ["semantic-conditioned normal feature learning", "candidate trace residual learning", "multi-scale trace fusion", "semantic-trace cross-attention"],
+    "research_methods": ["frozen DINOv3", "data-driven layer probes", "center-excluded neighborhood prediction", "trace-only classifier", "semantic-trace separation constraint"],
+    "experiment_plan": ["SDv1.4 training", "eight-generator GenImage evaluation", "linear probes", "masking", "semantic counterfactuals", "trace heatmaps"],
+    "feasibility": ["completed three-stage checkpoints", "completed cross-generator evaluation", "completed 32000-sample mechanism suite", "DDP and bf16 infrastructure", "up to 6 RTX 5090 GPUs"]
+  }
+}

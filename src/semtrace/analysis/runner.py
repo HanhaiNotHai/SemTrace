@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -14,7 +14,9 @@ from semtrace.analysis.common import cache_fingerprint, extract_feature_cache
 from semtrace.analysis.diagnostics import LiveDiagnosticCollector
 from semtrace.analysis.feature_cache import FeatureCacheReader, FeatureCacheWriter
 from semtrace.analysis.report import generate_mechanism_report
+from semtrace.analysis.visualize_trace_maps import FullImageResizeTransform
 from semtrace.config import parse_config_args
+from semtrace.data.manifest import ManifestImageDataset
 from semtrace.engine.checkpoint import load_training_checkpoint
 from semtrace.engine.distributed import initialize_distributed, select_amp_mode
 from semtrace.models.semtrace import SemTrace
@@ -75,12 +77,7 @@ def run_analysis_cli(
             rank=context.rank,
         )
         for manifest in manifests.values():
-            dataset = build_dataset(
-                config,
-                split=None,
-                training=False,
-                manifest_path=manifest,
-            )
+            dataset = _build_analysis_dataset(config, manifest, task=task)
             loader, _ = build_loader(
                 dataset,
                 batch_size=int(config.analysis.feature_batch_size),
@@ -179,6 +176,27 @@ def _configured_manifests(config: Any) -> dict[str, str]:
             raise ValueError(f"analysis manifest '{str(name)}' is not configured")
         manifests[str(name)] = str(path)
     return manifests
+
+
+def _build_analysis_dataset(
+    config: Any,
+    manifest: str,
+    *,
+    task: str,
+) -> torch.utils.data.Dataset[Any]:
+    if task == "visualization":
+        return ManifestImageDataset(
+            manifest,
+            FullImageResizeTransform(int(config.visualization.resize_size)),
+            split=None,
+            data_root=config.data.root,
+        )
+    return build_dataset(
+        config,
+        split=None,
+        training=False,
+        manifest_path=manifest,
+    )
 
 
 def _run_directory(config: Any, task: str, rank: int) -> Path:
