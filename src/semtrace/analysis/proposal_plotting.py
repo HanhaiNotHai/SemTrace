@@ -32,6 +32,7 @@ DISPLAY_GENERATORS = {
     "vqdm": "VQDM",
     "biggan": "BigGAN",
 }
+MIN_FONT_SIZE = 30
 
 
 def configure_publication_style() -> str:
@@ -64,12 +65,12 @@ def configure_publication_style() -> str:
             "font.family": "sans-serif",
             "font.sans-serif": [selected, "DejaVu Sans"],
             "axes.unicode_minus": False,
-            "font.size": 12,
-            "axes.titlesize": 15,
-            "axes.labelsize": 13,
-            "xtick.labelsize": 11,
-            "ytick.labelsize": 11,
-            "legend.fontsize": 11,
+            "font.size": MIN_FONT_SIZE,
+            "axes.titlesize": MIN_FONT_SIZE,
+            "axes.labelsize": MIN_FONT_SIZE,
+            "xtick.labelsize": MIN_FONT_SIZE,
+            "ytick.labelsize": MIN_FONT_SIZE,
+            "legend.fontsize": MIN_FONT_SIZE,
             "axes.linewidth": 1.0,
             "pdf.fonttype": 42,
             "ps.fonttype": 42,
@@ -98,9 +99,10 @@ def generate_proposal_figures(
         raise ValueError("DPI must be at least 72")
 
     outputs: list[Path] = []
-    figure, axis = plt.subplots(figsize=(9.2, 5.8), constrained_layout=True)
+    figure, axis = plt.subplots(figsize=(15.0, 10.0))
+    figure.subplots_adjust(left=0.12, right=0.97, top=0.97, bottom=0.20)
     _plot_core1(axis, core1_samples, selected_layers=selected_layers)
-    figure.suptitle("真实与生成图像的多尺度正常特征偏离分布", fontsize=17)
+    _add_bottom_title(figure, "真实与生成图像的多尺度正常特征偏离分布")
     outputs.extend(
         _save_figure(
             figure, destination, "01_real_fake_multiscale_residual", dpi, normalized_formats
@@ -108,17 +110,19 @@ def generate_proposal_figures(
     )
     plt.close(figure)
 
-    figure, axis = plt.subplots(figsize=(9.6, 6.3), constrained_layout=True)
+    figure, axis = plt.subplots(figsize=(16.0, 12.0))
+    figure.subplots_adjust(left=0.16, right=0.88, top=0.97, bottom=0.18)
     _plot_core2(axis, core2_table)
-    figure.suptitle("不同生成器对多尺度痕迹的敏感性", fontsize=17)
+    _add_bottom_title(figure, "不同生成器对多尺度痕迹的敏感性")
     outputs.extend(
         _save_figure(figure, destination, "02_generator_scale_masking", dpi, normalized_formats)
     )
     plt.close(figure)
 
-    figure, axis = plt.subplots(figsize=(9.2, 5.8), constrained_layout=True)
+    figure, axis = plt.subplots(figsize=(15.0, 10.0))
+    figure.subplots_adjust(left=0.12, right=0.97, top=0.97, bottom=0.24)
     _plot_core3(axis, core3_summary)
-    figure.suptitle("语义条件与生成痕迹对最终判别的影响", fontsize=17)
+    _add_bottom_title(figure, "语义条件与生成痕迹对最终判别的影响")
     outputs.extend(
         _save_figure(
             figure, destination, "03_semantic_vs_trace_intervention", dpi, normalized_formats
@@ -126,14 +130,34 @@ def generate_proposal_figures(
     )
     plt.close(figure)
 
-    figure, axes = plt.subplots(1, 3, figsize=(18.0, 6.8), constrained_layout=True)
+    figure, axes = plt.subplots(1, 3, figsize=(32.0, 12.0))
+    figure.subplots_adjust(left=0.05, right=0.98, top=0.96, bottom=0.23, wspace=0.35)
     _plot_core1(axes[0], core1_samples, selected_layers=selected_layers, compact=True)
-    axes[0].set_title("(a) 多尺度正常特征偏离")
     _plot_core2(axes[1], core2_table, compact=True)
-    axes[1].set_title("(b) 不同生成器的尺度互补性")
     _plot_core3(axes[2], core3_summary, compact=True)
-    axes[2].set_title("(c) 语义条件与痕迹证据")
-    figure.suptitle("SemTrace核心机制分析：正常模式偏离、多尺度互补与语义条件化", fontsize=18)
+    for axis, title in zip(
+        axes,
+        (
+            "(a) 多尺度正常特征偏离",
+            "(b) 不同生成器的尺度互补性",
+            "(c) 语义条件与痕迹证据",
+        ),
+        strict=True,
+    ):
+        bounds = axis.get_position()
+        figure.text(
+            bounds.x0 + bounds.width / 2,
+            0.115,
+            title,
+            ha="center",
+            fontsize=MIN_FONT_SIZE,
+        )
+    _add_bottom_title(
+        figure,
+        "SemTrace核心机制分析：正常模式偏离、多尺度互补与语义条件化",
+        y=0.04,
+        fontsize=MIN_FONT_SIZE,
+    )
     outputs.extend(
         _save_figure(
             figure, destination, "04_semtrace_core_mechanisms_triptych", dpi, normalized_formats
@@ -239,12 +263,11 @@ def _plot_core2(axis: Axes, table: pd.DataFrame, *, compact: bool = False) -> No
                 f"{value:+.2f}",
                 ha="center",
                 va="center",
-                fontsize=8.5 if compact else 10,
+                fontsize=MIN_FONT_SIZE,
                 color="white" if abs(value) > threshold else "black",
             )
     colorbar = axis.figure.colorbar(image, ax=axis, fraction=0.046, pad=0.04)
     colorbar.set_label("AP下降（百分点）")
-    axis.set_xlabel("推理期Leave-One-Scale-Out干预")
     axis.set_ylabel("测试生成器")
 
 
@@ -272,24 +295,34 @@ def _plot_core3(axis: Axes, summary: pd.DataFrame, *, compact: bool = False) -> 
             f"{value:.2f}%",
             ha="center",
             va="bottom",
-            fontsize=9 if compact else 11,
+            fontsize=MIN_FONT_SIZE,
         )
     trace_following = selected.loc["real_fake_trace_swap", "trace_following_rate"]
     if pd.notna(trace_following):
         axis.text(
-            0.98,
+            0.02,
             0.96,
             f"痕迹跟随率 = {float(trace_following) * 100.0:.2f}%",
             transform=axis.transAxes,
-            ha="right",
+            ha="left",
             va="top",
-            fontsize=9 if compact else 11,
+            fontsize=MIN_FONT_SIZE,
             bbox={"boxstyle": "round,pad=0.25", "facecolor": "white", "alpha": 0.8},
         )
     axis.set_xticks(range(2), labels)
     axis.set_ylabel("预测翻转率（%）")
     axis.set_ylim(0, max(float(upper.max()) * 1.22, 5.0))
     axis.grid(axis="y", alpha=0.22, linewidth=0.7)
+
+
+def _add_bottom_title(
+    figure: Figure,
+    title: str,
+    *,
+    y: float = 0.065,
+    fontsize: float = 30,
+) -> None:
+    figure.text(0.5, y, title, ha="center", va="bottom", fontsize=fontsize)
 
 
 def _save_figure(

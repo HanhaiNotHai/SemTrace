@@ -3,10 +3,12 @@ from __future__ import annotations
 import json
 
 import numpy as np
+from matplotlib.text import Text
 
 from semtrace.models.probes import (
     LayerProbeMetrics,
     choose_nuisance_label,
+    create_layer_score_figure,
     save_probe_artifacts,
     select_probe_layers,
 )
@@ -79,3 +81,22 @@ def test_probe_artifacts_contain_required_reproducibility_fields(tmp_path) -> No
     assert payload["generator_probe_enabled"] is False
     assert (tmp_path / "probe_results.csv").is_file()
     assert (tmp_path / "layer_score_plot.png").is_file()
+    assert (tmp_path / "layer_score_plot.pdf").is_file()
+
+
+def test_layer_score_figure_uses_chinese_large_text_and_bottom_title() -> None:
+    figure = create_layer_score_figure(
+        layers=[0, 1, 2],
+        scores=[-0.2, 0.1, 0.3],
+        selected_layers=(2,),
+    )
+
+    visible_text = [
+        artist
+        for artist in figure.findobj(Text)
+        if artist.get_visible() and artist.get_text().strip()
+    ]
+    assert min(artist.get_fontsize() for artist in visible_text) >= 30
+    assert figure.axes[0].get_xlabel() == "Transformer层"
+    assert len(figure.texts) == 1
+    assert 0.06 <= figure.texts[0].get_position()[1] <= 0.10

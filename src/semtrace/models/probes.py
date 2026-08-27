@@ -233,23 +233,47 @@ def save_probe_artifacts(
         encoding="utf-8",
     )
 
-    layers = list(result.layer_scores)
-    scores = [result.layer_scores[layer] for layer in layers]
-    figure, axis = plt.subplots(figsize=(7, 4))
+    figure = create_layer_score_figure(
+        layers=list(result.layer_scores),
+        scores=[result.layer_scores[layer] for layer in result.layer_scores],
+        selected_layers=result.selected_layers,
+    )
+    for suffix in ("png", "pdf"):
+        figure.savefig(
+            destination / f"layer_score_plot.{suffix}",
+            dpi=400,
+            bbox_inches="tight",
+            facecolor="white",
+        )
+    plt.close(figure)
+
+
+def create_layer_score_figure(
+    *,
+    layers: Sequence[int],
+    scores: Sequence[float],
+    selected_layers: Sequence[int],
+) -> plt.Figure:
+    """Create the Chinese publication figure without changing probe data."""
+    from semtrace.analysis.proposal_plotting import configure_publication_style
+
+    configure_publication_style()
+    score_by_layer = dict(zip(layers, scores, strict=True))
+    figure, axis = plt.subplots(figsize=(15, 9))
+    figure.subplots_adjust(left=0.12, right=0.97, top=0.96, bottom=0.24)
     axis.plot(layers, scores, marker="o")
     axis.scatter(
-        result.selected_layers,
-        [result.layer_scores[layer] for layer in result.selected_layers],
+        selected_layers,
+        [score_by_layer[layer] for layer in selected_layers],
         color="tab:red",
-        label="selected",
+        label="选中层",
         zorder=3,
     )
-    axis.set(xlabel="Transformer block", ylabel="Probe score", title="Layer probe scores")
+    axis.set(xlabel="Transformer层", ylabel="探针综合分数")
     axis.grid(alpha=0.25)
     axis.legend()
-    figure.tight_layout()
-    figure.savefig(destination / "layer_score_plot.png", dpi=160)
-    plt.close(figure)
+    figure.text(0.5, 0.075, "多层探针选择分数", ha="center", va="bottom", fontsize=30)
+    return figure
 
 
 def _zscore(values: np.ndarray) -> np.ndarray:
