@@ -7,7 +7,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+from matplotlib.text import Text
 
+import semtrace.analysis.proposal_plotting as proposal_plotting
 from semtrace.analysis.proposal_mechanisms import (
     build_core1_statistics,
     build_core2_statistics,
@@ -280,3 +282,58 @@ def test_figures_manifest_and_archive_are_reproducible(tmp_path: Path) -> None:
         assert "README.md" in names
         assert "metadata/file_manifest.json" in names
         assert archive.name not in names
+
+
+def test_proposal_figures_use_large_text_bottom_titles_and_no_core2_xlabel(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    core2, _, _ = build_core2_statistics(
+        _core2_predictions(),
+        selected_layers=LAYERS,
+        generators=("fake-a", "fake-b"),
+        threshold=0.5,
+        bootstrap_iterations=20,
+        seed=0,
+    )
+    core3, _ = build_core3_statistics(
+        _core3_predictions(), threshold=0.5, bootstrap_iterations=20, seed=0
+    )
+    figures = []
+
+    def capture_figure(figure, *_args, **_kwargs):
+        figures.append(figure)
+        return []
+
+    monkeypatch.setattr(proposal_plotting, "_save_figure", capture_figure)
+    proposal_plotting.generate_proposal_figures(
+        _core1_samples(),
+        core2,
+        core3,
+        tmp_path,
+        selected_layers=LAYERS,
+        dpi=400,
+        formats=("png", "pdf"),
+    )
+
+    assert len(figures) == 4
+    assert figures[1].axes[0].get_xlabel() == ""
+    for figure in figures:
+        visible_text = [
+            artist
+            for artist in figure.findobj(Text)
+            if artist.get_visible() and artist.get_text().strip()
+        ]
+        assert visible_text
+        assert min(artist.get_fontsize() for artist in visible_text) >= 30
+    assert all(0.05 <= title.get_position()[1] <= 0.10 for title in figures[0].texts)
+    assert len(figures[3].texts) == 4
+    panel_titles = figures[3].texts[:3]
+    overall_title = figures[3].texts[3]
+    assert all(0.10 <= title.get_position()[1] <= 0.14 for title in panel_titles)
+    assert 0.03 <= overall_title.get_position()[1] <= 0.06
+    trace_following = next(
+        text for text in figures[2].axes[0].texts if text.get_text().startswith("痕迹跟随率")
+    )
+    assert trace_following.get_ha() == "left"
+    assert trace_following.get_position() == (0.02, 0.96)
