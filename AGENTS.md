@@ -15,15 +15,18 @@ Correctness and alignment take priority over speed.
 ## Mandatory Skills
 
 Use the installed skills according to the following rules.
+Load only relevant skill bodies and supporting references. Reuse verified sources,
+reproduction cases, test results, and reviews while their relevant inputs remain
+unchanged. Complementary skills may consume the same evidence without restarting
+the workflow; this does not waive an applicable verification requirement.
 
-### `interview-me`
+### `grilling`
 
 Use before implementation whenever any material requirement, constraint,
 acceptance criterion, interface, expected behavior, or scope boundary is unclear.
 
-Ask exactly one focused question at a time.
-
-Do not send a batch questionnaire.
+Ask up to three independent, focused questions per round.
+Ask dependent questions only after their prerequisites are resolved.
 
 ### `source-driven-development`
 
@@ -167,11 +170,13 @@ A requirement is materially incomplete when the missing information could change
 * Dependency choices.
 * The definition of completion.
 
-When material information is missing, invoke `interview-me`.
+When material information is missing, invoke `grilling`.
 
-Ask exactly one focused question at a time.
+Ask up to three independent, focused questions per round.
+Use one question when its answer determines which question comes next.
 
-Each question must resolve one concrete uncertainty.
+Each question must resolve one concrete uncertainty that can change implementation
+or acceptance. Do not exhaust speculative branches of a design tree.
 
 Use this format:
 
@@ -179,16 +184,19 @@ Use this format:
 Current understanding:
 <one concise sentence>
 
-Question:
-<one focused question>
+Question(s):
+<one to three numbered, independent questions>
 
 Best guess:
-<the most likely answer and why>
+<the recommended answer and reason for each question; state insufficient evidence
+instead of inventing a recommendation>
 ```
 
-Wait for the user's answer before asking the next question.
+Wait for the user's answers before the next round.
 
-Do not ask several unrelated questions in one message.
+Resolve decision dependencies before asking downstream questions. Stop interviewing
+when no material uncertainty blocks implementation or acceptance, then use the
+requirements restatement below as the single approval gate.
 
 Do not repeat a question that the user has already answered.
 
@@ -347,6 +355,11 @@ confirmation gate before making the first modification.
 After explicit approval, follow this order.
 
 ## 1. Recheck Scope
+
+Reuse the latest explicit approval when the specification has not changed.
+Do not restart an interview or request the same approval because another skill
+is loaded or the task continues in a later turn. A material scope change requires
+an updated requirements restatement and approval.
 
 Before editing:
 

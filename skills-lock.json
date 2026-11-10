@@ -5,19 +5,18 @@
       "source": "addyosmani/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/code-review-and-quality/SKILL.md",
-      "computedHash": "ae7a873053c84dd5a76f70c05a21efc4095017e95b8f5db778eb826809859cac"
+      "computedHash": "b02ea9be2dae5bf450bfea1106dd40d283eebde48883c54c2c2722a5a887e018"
     },
     "debugging-and-error-recovery": {
       "source": "addyosmani/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/debugging-and-error-recovery/SKILL.md",
-      "computedHash": "1a119d27e8f1d27ed6317adf3115826336491346780dcb7d7a7a7f79fe3ffe10"
+      "computedHash": "a8e7072e4432264353f65a448ca011cf088bd03eefaa6aa2696db08206f88b77"
     },
-    "interview-me": {
-      "source": "addyosmani/agent-skills",
-      "sourceType": "github",
-      "skillPath": "skills/interview-me/SKILL.md",
-      "computedHash": "efded91ac7f7626239b338ce8622afeb557151b86532b632f3c9eb5b2ff9048f"
+    "grilling": {
+      "source": "./.agents/skills/grilling",
+      "sourceType": "local",
+      "computedHash": "e7235b19f51b84118f94de0b805b638828f6c60afc145b6aa6ff97ba19bfd25d"
     },
     "karpathy-guidelines": {
       "source": "multica-ai/andrej-karpathy-skills",
@@ -29,19 +28,19 @@
       "source": "DietrichGebert/ponytail",
       "sourceType": "github",
       "skillPath": "skills/ponytail/SKILL.md",
-      "computedHash": "210fa0831f649ce9f8a305f7b7c8cf2a0dd09ac4dd53067109941b96e7811d4e"
+      "computedHash": "5ab854c9ff081abe4c58318a1461db26668c800b046b0f69abd36383e65583c1"
     },
     "source-driven-development": {
       "source": "addyosmani/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/source-driven-development/SKILL.md",
-      "computedHash": "235fb43569e9b21ec5d209818ff1ad3da9682be33c4e464ffa89ed348e7094a0"
+      "computedHash": "baa5c8317c1422798d7ac3f7e2c1df44a8498ea0c0dd42f9014e61f589132371"
     },
     "test-driven-development": {
       "source": "addyosmani/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/test-driven-development/SKILL.md",
-      "computedHash": "133428ac28fa75cf6f8cf5dafea8d603022852ce59a0520620784c7e3dc7e519"
+      "computedHash": "76eac2874fa9c9492d557678c93ccebbe7db6b068ce073c1be9681f5e016c9ec"
     }
   }
 }
